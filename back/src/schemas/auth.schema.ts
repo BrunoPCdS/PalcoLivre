@@ -7,7 +7,7 @@ export const registerSchema = z.object({
     .string()
     .min(6, 'A senha deve ter no mínimo 6 caracteres')
     .max(100),
-  role: z.enum(['LISTENER', 'BAND_MANAGER']).default('LISTENER'),
+  role: z.enum(['LISTENER', 'BAND_MANAGER', 'USER', 'BAND']).default('LISTENER'),
 });
 
 export const loginSchema = z.object({

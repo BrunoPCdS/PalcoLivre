@@ -130,6 +130,89 @@ export class AlbumController {
   }
 
   /**
+   * Atualiza dados de um álbum existente
+   */
+  static async updateAlbum(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) throw new AppError('Não autenticado', 401);
+      const { id } = req.params;
+      const { title, coverImageUrl, releaseYear, genre } = req.body;
+
+      const album = await prisma.album.findUnique({
+        where: { id },
+        include: { band: true },
+      });
+
+      if (!album) throw new AppError('Álbum não encontrado.', 404);
+
+      if (album.band.userId !== req.user.userId && req.user.role !== 'ADMIN') {
+        throw new AppError('Sem permissão para atualizar este álbum.', 403);
+      }
+
+      const updated = await prisma.album.update({
+        where: { id },
+        data: {
+          ...(title ? { title } : {}),
+          ...(coverImageUrl ? { coverImageUrl } : {}),
+          ...(releaseYear ? { releaseYear: Number(releaseYear) } : {}),
+          ...(genre ? { genre } : {}),
+        },
+        include: {
+          tracks: { orderBy: { trackNumber: 'asc' } },
+        },
+      });
+
+      res.status(200).json({
+        status: 'success',
+        message: 'Álbum atualizado com sucesso.',
+        data: { album: updated },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Exclui um álbum e remove seus áudios do R2
+   */
+  static async deleteAlbum(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) throw new AppError('Não autenticado', 401);
+      const { id } = req.params;
+
+      const album = await prisma.album.findUnique({
+        where: { id },
+        include: {
+          band: true,
+          tracks: true,
+        },
+      });
+
+      if (!album) throw new AppError('Álbum não encontrado.', 404);
+
+      if (album.band.userId !== req.user.userId && req.user.role !== 'ADMIN') {
+        throw new AppError('Sem permissão para excluir este álbum.', 403);
+      }
+
+      // Remove faixas associadas no Cloudflare R2
+      for (const track of album.tracks) {
+        if (track.r2Key) {
+          StorageService.deleteFile(track.r2Key);
+        }
+      }
+
+      await prisma.album.delete({ where: { id } });
+
+      res.status(200).json({
+        status: 'success',
+        message: 'Álbum e faixas excluídos com sucesso.',
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
    * Remove uma faixa e expurga o arquivo de áudio do Cloudflare R2
    */
   static async deleteTrack(req: Request, res: Response, next: NextFunction): Promise<void> {

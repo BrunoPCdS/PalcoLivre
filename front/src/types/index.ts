@@ -1,4 +1,9 @@
-export type UserRole = 'LISTENER' | 'BAND_MANAGER' | 'ADMIN';
+export type UserRole = 'LISTENER' | 'BAND_MANAGER' | 'ADMIN' | 'BAND' | 'USER';
+
+export const isBandRole = (role?: UserRole | string | null): boolean => {
+  if (!role) return false;
+  return role === 'BAND_MANAGER' || role === 'BAND' || role === 'ADMIN';
+};
 
 export type MusicGenre =
   | 'ROCK'
@@ -81,10 +86,14 @@ export interface Band {
   members: string;
   contactPhone?: string;
   contactEmail: string;
+  instagramUrl?: string | null;
+  spotifyUrl?: string | null;
+  youtubeUrl?: string | null;
   profileImageUrl?: string | null;
   bannerImageUrl?: string | null;
   viewCount: number;
   likeCount?: number;
+  albumCount?: number;
   isLiked?: boolean;
   photos?: BandPhoto[];
   albums?: Album[];

@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Search, PlusCircle, LogIn, LogOut, User, Music2 } from 'lucide-react';
+import { Search, PlusCircle, LogIn, LogOut, User, Music2, Heart, LayoutDashboard } from 'lucide-react';
 import logoImg from '../../img/logo.png';
 
 interface NavbarProps {
-  onNavigate: (view: 'home' | 'featured' | 'explore' | 'band-profile' | 'create-band', param?: string) => void;
+  onNavigate: (view: 'home' | 'featured' | 'explore' | 'band-profile' | 'user-profile' | 'band-dashboard', param?: string) => void;
   onOpenCreateBand: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenCreateBand }) => {
-  const { user, isAuthenticated, logout, openAuthModal } = useAuth();
+  const { user, isAuthenticated, isBand, logout, openAuthModal } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
 
   return (
@@ -56,11 +56,34 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenCreateBand }) 
           >
             Explorar Estilos
           </button>
+
+          {/* Links Condicionais por Tipo de Usuário (Roles) */}
+          {isAuthenticated && (
+            <>
+              {isBand ? (
+                <button
+                  onClick={() => onNavigate('band-dashboard')}
+                  className="hover:text-[#FF5500] text-[#F8FAFC] transition-colors flex items-center gap-1.5 font-bold"
+                >
+                  <LayoutDashboard className="w-4 h-4 text-[#FF5500]" />
+                  <span>Painel da Banda</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => onNavigate('user-profile')}
+                  className="hover:text-[#8B5CF6] text-[#F8FAFC] transition-colors flex items-center gap-1.5 font-bold"
+                >
+                  <Heart className="w-4 h-4 text-[#FF5500] fill-[#FF5500]" />
+                  <span>Meus Favoritos</span>
+                </button>
+              )}
+            </>
+          )}
         </nav>
 
         {/* Busca rápida e Ações de Auth */}
         <div className="flex items-center gap-3">
-          <div className="relative hidden lg:block w-64">
+          <div className="relative hidden lg:block w-56">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94A3B8]" />
             <input
               type="text"
@@ -71,26 +94,46 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenCreateBand }) 
             />
           </div>
 
-          {/* CTA Cadastrar Banda */}
-          <button
-            onClick={onOpenCreateBand}
-            className="flex items-center gap-2 bg-[#FF5500] hover:bg-[#E04B00] text-white px-4 py-2 rounded-full text-xs font-bold transition-all duration-200 shadow-glow-orange hover:scale-105 active:scale-95"
-          >
-            <PlusCircle className="w-4 h-4" />
-            <span className="hidden sm:inline">Cadastrar Banda</span>
-          </button>
+          {/* 
+            REGRA 1: CONTROLE DE ACESSO (ROLES)
+            Usuário comum (USER): NÃO deve ver o botão de Cadastrar Banda em nenhuma parte da interface.
+            Conta de Banda (BAND): Deve visualizar o botão de Cadastrar Banda.
+          */}
+          {isBand && (
+            <button
+              onClick={onOpenCreateBand}
+              className="flex items-center gap-2 bg-[#FF5500] hover:bg-[#E04B00] text-white px-4 py-2 rounded-full text-xs font-bold transition-all duration-200 shadow-glow-orange hover:scale-105 active:scale-95"
+            >
+              <PlusCircle className="w-4 h-4" />
+              <span className="hidden sm:inline">Cadastrar Banda</span>
+            </button>
+          )}
 
           {/* Usuário / Login */}
           {isAuthenticated ? (
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 bg-[#0F1014] px-3 py-1.5 rounded-full border border-[#272A36]">
-                <div className="w-7 h-7 rounded-full bg-[#8B5CF6] flex items-center justify-center text-xs font-bold text-white">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => onNavigate(isBand ? 'band-dashboard' : 'user-profile')}
+                className="flex items-center gap-2 bg-[#0F1014] hover:bg-[#272A36] px-3 py-1.5 rounded-full border border-[#272A36] transition-colors group text-left"
+                title="Acessar meu perfil e favoritos"
+              >
+                <div
+                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white ${
+                    isBand ? 'bg-[#FF5500]' : 'bg-[#8B5CF6]'
+                  }`}
+                >
                   {user?.name.charAt(0).toUpperCase()}
                 </div>
-                <span className="text-xs font-semibold text-[#F8FAFC] max-w-[100px] truncate hidden sm:inline">
-                  {user?.name}
-                </span>
-              </div>
+                <div className="hidden sm:block">
+                  <span className="text-xs font-semibold text-[#F8FAFC] max-w-[100px] truncate block">
+                    {user?.name}
+                  </span>
+                  <span className="text-[9px] font-bold text-[#94A3B8] group-hover:text-[#FF5500] uppercase block">
+                    {isBand ? 'Banda' : 'Ouvinte'}
+                  </span>
+                </div>
+              </button>
+
               <button
                 onClick={logout}
                 title="Sair"

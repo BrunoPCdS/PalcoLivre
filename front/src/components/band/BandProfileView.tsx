@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Band, Album, Track } from '../../types';
 import { usePlayer } from '../../context/PlayerContext';
 import { useAuth } from '../../context/AuthContext';
+import { ApiService } from '../../services/api';
 import {
   Heart,
   Eye,
@@ -17,19 +18,27 @@ import {
   ArrowLeft,
   Send,
   CheckCircle,
+  Settings,
+  Instagram,
+  Youtube,
+  Radio,
 } from 'lucide-react';
 
 interface BandProfileViewProps {
   band: Band;
   onBack: () => void;
+  onEditBand?: (band: Band) => void;
 }
 
-export const BandProfileView: React.FC<BandProfileViewProps> = ({ band, onBack }) => {
+export const BandProfileView: React.FC<BandProfileViewProps> = ({ band, onBack, onEditBand }) => {
   const { currentTrack, isPlaying, playTrack, togglePlay } = usePlayer();
-  const { requireAuth } = useAuth();
+  const { user, isBand, requireAuth } = useAuth();
 
   const [isLiked, setIsLiked] = useState(band.isLiked || false);
   const [likeCount, setLikeCount] = useState(band.likeCount || 0);
+
+  // Curtidas individuais de faixas
+  const [likedTrackIds, setLikedTrackIds] = useState<Record<string, boolean>>({});
 
   // Form de contato da banda
   const [senderName, setSenderName] = useState('');
@@ -38,12 +47,32 @@ export const BandProfileView: React.FC<BandProfileViewProps> = ({ band, onBack }
   const [contactSent, setContactSent] = useState(false);
   const [isSending, setIsSending] = useState(false);
 
+  const isOwner = user && (user.id === band.userId || isBand);
+
   const handleLikeBand = () => {
-    requireAuth(() => {
-      const nextLiked = !isLiked;
-      setIsLiked(nextLiked);
-      setLikeCount((prev) => prev + (nextLiked ? 1 : -1));
+    requireAuth(async () => {
+      try {
+        const res = await ApiService.toggleBandLike(band.id);
+        setIsLiked(res.isLiked);
+        setLikeCount(res.likeCount);
+      } catch {
+        const nextLiked = !isLiked;
+        setIsLiked(nextLiked);
+        setLikeCount((prev) => prev + (nextLiked ? 1 : -1));
+      }
     }, 'Crie uma conta para curtir o perfil da banda e salvar em seus favoritos!');
+  };
+
+  const handleToggleTrackLike = (e: React.MouseEvent, track: Track) => {
+    e.stopPropagation();
+    requireAuth(async () => {
+      try {
+        const res = await ApiService.toggleTrackLike(track.id);
+        setLikedTrackIds((prev) => ({ ...prev, [track.id]: res.isLiked }));
+      } catch {
+        setLikedTrackIds((prev) => ({ ...prev, [track.id]: !prev[track.id] }));
+      }
+    }, 'Crie uma conta para favoritar músicas e ouvi-las na sua playlist de favoritas!');
   };
 
   const handleSendMessage = (e: React.FormEvent) => {
@@ -59,8 +88,8 @@ export const BandProfileView: React.FC<BandProfileViewProps> = ({ band, onBack }
 
   return (
     <div className="min-h-screen bg-[#0F1014] pb-32">
-      {/* Botão Voltar */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+      {/* Botão Voltar & Ações de Gestão */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 flex items-center justify-between">
         <button
           onClick={onBack}
           className="inline-flex items-center gap-2 text-xs font-bold text-[#94A3B8] hover:text-[#FF5500] transition-colors"
@@ -68,6 +97,16 @@ export const BandProfileView: React.FC<BandProfileViewProps> = ({ band, onBack }
           <ArrowLeft className="w-4 h-4" />
           <span>Voltar para Vitrine Principal</span>
         </button>
+
+        {isOwner && onEditBand && (
+          <button
+            onClick={() => onEditBand(band)}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#1A1C23] hover:bg-[#272A36] text-[#FF5500] border border-[#FF5500]/40 text-xs font-bold transition-all shadow-glow-orange hover:scale-105 active:scale-95"
+          >
+            <Settings className="w-3.5 h-3.5" />
+            <span>Editar Banda & Músicas</span>
+          </button>
+        )}
       </div>
 
       {/* Banner Hero da Banda */}
@@ -105,22 +144,34 @@ export const BandProfileView: React.FC<BandProfileViewProps> = ({ band, onBack }
             </div>
           </div>
 
-          {/* Botão de Curtir Perfil */}
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={handleLikeBand}
-            className={`flex items-center gap-2 px-6 py-3 rounded-full text-xs font-bold transition-all duration-300 shadow-md ${
-              isLiked
-                ? 'bg-[#FF5500] text-white shadow-glow-orange'
-                : 'bg-[#1A1C23] hover:bg-[#272A36] text-[#F8FAFC] border border-[#272A36]'
-            }`}
-          >
-            <Heart className={`w-4 h-4 ${isLiked ? 'fill-white' : ''}`} />
-            <span>{isLiked ? 'Banda Curtida' : 'Curtir Banda'}</span>
-            <span className="bg-black/30 px-2 py-0.5 rounded-full text-[11px] ml-1">
-              {likeCount}
-            </span>
-          </motion.button>
+          <div className="flex items-center gap-3">
+            {isOwner && onEditBand && (
+              <button
+                onClick={() => onEditBand(band)}
+                className="hidden sm:flex items-center gap-1.5 px-5 py-3 rounded-full bg-[#1A1C23]/90 hover:bg-[#272A36] text-[#F8FAFC] border border-[#272A36] text-xs font-bold transition-all shadow-md"
+              >
+                <Settings className="w-4 h-4 text-[#FF5500]" />
+                <span>Painel de Edição</span>
+              </button>
+            )}
+
+            {/* Botão de Curtir Perfil */}
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={handleLikeBand}
+              className={`flex items-center gap-2 px-6 py-3 rounded-full text-xs font-bold transition-all duration-300 shadow-md ${
+                isLiked
+                  ? 'bg-[#FF5500] text-white shadow-glow-orange'
+                  : 'bg-[#1A1C23] hover:bg-[#272A36] text-[#F8FAFC] border border-[#272A36]'
+              }`}
+            >
+              <Heart className={`w-4 h-4 ${isLiked ? 'fill-white' : ''}`} />
+              <span>{isLiked ? 'Banda Curtida' : 'Curtir Banda'}</span>
+              <span className="bg-black/30 px-2 py-0.5 rounded-full text-[11px] ml-1">
+                {likeCount}
+              </span>
+            </motion.button>
+          </div>
         </div>
       </div>
 
@@ -135,7 +186,7 @@ export const BandProfileView: React.FC<BandProfileViewProps> = ({ band, onBack }
                 <span>Discografia Oficial</span>
               </h2>
               <span className="text-xs text-[#94A3B8] bg-[#1A1C23] border border-[#272A36] px-3 py-1 rounded-full">
-                Máx. 10 faixas por álbum
+                Streaming HD via Cloudflare R2
               </span>
             </div>
 
@@ -165,6 +216,7 @@ export const BandProfileView: React.FC<BandProfileViewProps> = ({ band, onBack }
                     <div className="space-y-2">
                       {album.tracks?.map((track) => {
                         const isCurrentPlaying = currentTrack?.id === track.id && isPlaying;
+                        const isTrackLiked = likedTrackIds[track.id] ?? track.isLiked ?? false;
 
                         return (
                           <div
@@ -209,11 +261,26 @@ export const BandProfileView: React.FC<BandProfileViewProps> = ({ band, onBack }
                               </div>
                             </div>
 
-                            <span className="text-xs font-mono text-[#94A3B8]">
-                              {Math.floor(track.duration / 60)}:
-                              {track.duration % 60 < 10 ? '0' : ''}
-                              {track.duration % 60}
-                            </span>
+                            <div className="flex items-center gap-3">
+                              <button
+                                type="button"
+                                onClick={(e) => handleToggleTrackLike(e, track)}
+                                className={`p-1.5 rounded-lg transition-colors ${
+                                  isTrackLiked
+                                    ? 'text-[#FF5500] hover:text-red-400'
+                                    : 'text-[#94A3B8] hover:text-[#FF5500]'
+                                }`}
+                                title={isTrackLiked ? 'Desfavoritar' : 'Favoritar faixa'}
+                              >
+                                <Heart className={`w-3.5 h-3.5 ${isTrackLiked ? 'fill-current' : ''}`} />
+                              </button>
+
+                              <span className="text-xs font-mono text-[#94A3B8]">
+                                {Math.floor(track.duration / 60)}:
+                                {track.duration % 60 < 10 ? '0' : ''}
+                                {track.duration % 60}
+                              </span>
+                            </div>
                           </div>
                         );
                       })}
@@ -225,6 +292,14 @@ export const BandProfileView: React.FC<BandProfileViewProps> = ({ band, onBack }
               <div className="bg-[#1A1C23] p-8 rounded-2xl border border-[#272A36] text-center">
                 <Disc3 className="w-8 h-8 text-[#94A3B8] mx-auto mb-2 opacity-50" />
                 <p className="text-xs text-[#94A3B8]">Nenhum álbum lançado ainda por esta banda.</p>
+                {isOwner && onEditBand && (
+                  <button
+                    onClick={() => onEditBand(band)}
+                    className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#FF5500] text-white text-xs font-bold"
+                  >
+                    <span>Lançar Primeiro Álbum no R2</span>
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -286,6 +361,50 @@ export const BandProfileView: React.FC<BandProfileViewProps> = ({ band, onBack }
               {band.members}
             </p>
           </div>
+
+          {/* Redes Sociais da Banda */}
+          {(band.instagramUrl || band.spotifyUrl || band.youtubeUrl) && (
+            <div className="bg-[#1A1C23] p-6 rounded-2xl border border-[#272A36]">
+              <h3 className="text-sm font-bold text-[#F8FAFC] uppercase tracking-wider mb-3">
+                Canais Oficiais
+              </h3>
+              <div className="flex flex-col gap-2.5 text-xs">
+                {band.instagramUrl && (
+                  <a
+                    href={band.instagramUrl.startsWith('http') ? band.instagramUrl : `https://instagram.com/${band.instagramUrl.replace('@', '')}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-2 text-[#94A3B8] hover:text-[#FF5500] transition-colors"
+                  >
+                    <Instagram className="w-4 h-4 text-[#FF5500]" />
+                    <span>Instagram Oficial</span>
+                  </a>
+                )}
+                {band.spotifyUrl && (
+                  <a
+                    href={band.spotifyUrl.startsWith('http') ? band.spotifyUrl : `https://${band.spotifyUrl}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-2 text-[#94A3B8] hover:text-green-400 transition-colors"
+                  >
+                    <Radio className="w-4 h-4 text-green-400" />
+                    <span>Perfil no Spotify</span>
+                  </a>
+                )}
+                {band.youtubeUrl && (
+                  <a
+                    href={band.youtubeUrl.startsWith('http') ? band.youtubeUrl : `https://${band.youtubeUrl}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-2 text-[#94A3B8] hover:text-red-400 transition-colors"
+                  >
+                    <Youtube className="w-4 h-4 text-red-400" />
+                    <span>Canal no YouTube</span>
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Informações de Contato / Shows */}
           <div className="bg-[#1A1C23] p-6 rounded-2xl border border-[#272A36]">

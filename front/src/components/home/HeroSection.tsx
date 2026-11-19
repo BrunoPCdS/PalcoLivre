@@ -1,14 +1,29 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Flame, Compass, Radio, Users, Sparkles } from 'lucide-react';
-import logoImg from '../../img/logo.png';
+import { Flame, Compass, Sparkles, Heart } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 interface HeroSectionProps {
   onOpenCreateBand: () => void;
   onExplore: () => void;
+  onOpenFavorites?: () => void;
 }
 
-export const HeroSection: React.FC<HeroSectionProps> = ({ onOpenCreateBand, onExplore }) => {
+export const HeroSection: React.FC<HeroSectionProps> = ({
+  onOpenCreateBand,
+  onExplore,
+  onOpenFavorites,
+}) => {
+  const { isAuthenticated, isBand, openAuthModal } = useAuth();
+
+  const handleBandCta = () => {
+    if (!isAuthenticated) {
+      openAuthModal('register', 'Crie sua Conta de Banda (BAND) para cadastrar e gerenciar perfis no PalcoLivre!');
+    } else if (isBand) {
+      onOpenCreateBand();
+    }
+  };
+
   return (
     <section className="relative overflow-hidden pt-12 pb-20 md:py-24 border-b border-[#272A36]">
       {/* Background Stage Lighting Effects */}
@@ -52,20 +67,37 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onOpenCreateBand, onEx
           Publique seus álbuns com streaming de alta definição, receba apoio direto do público e encontre a trilha sonora da sua próxima obsessão.
         </motion.p>
 
-        {/* CTAs Principais */}
+        {/* CTAs Principais com Controle de Acesso e Roles */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.4 }}
           className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4"
         >
-          <button
-            onClick={onOpenCreateBand}
-            className="w-full sm:w-auto px-8 py-4 rounded-full bg-[#FF5500] hover:bg-[#E04B00] text-white font-bold text-sm tracking-wide transition-all duration-300 shadow-glow-orange hover:scale-105 active:scale-95 flex items-center justify-center gap-2 group"
-          >
-            <Flame className="w-4 h-4 fill-white group-hover:animate-bounce" />
-            <span>Cadastrar Minha Banda</span>
-          </button>
+          {/* 
+            Usuário comum (USER): Não deve ver o botão de Cadastrar Banda em nenhuma parte.
+            Conta de Banda (BAND) ou Visitante: Pode visualizar.
+          */}
+          {(!isAuthenticated || isBand) && (
+            <button
+              onClick={handleBandCta}
+              className="w-full sm:w-auto px-8 py-4 rounded-full bg-[#FF5500] hover:bg-[#E04B00] text-white font-bold text-sm tracking-wide transition-all duration-300 shadow-glow-orange hover:scale-105 active:scale-95 flex items-center justify-center gap-2 group"
+            >
+              <Flame className="w-4 h-4 fill-white group-hover:animate-bounce" />
+              <span>Cadastrar Minha Banda</span>
+            </button>
+          )}
+
+          {/* Se for usuário comum (USER) logado, exibe botão para seus favoritos */}
+          {isAuthenticated && !isBand && onOpenFavorites && (
+            <button
+              onClick={onOpenFavorites}
+              className="w-full sm:w-auto px-8 py-4 rounded-full bg-[#8B5CF6] hover:bg-[#7C3AED] text-white font-bold text-sm tracking-wide transition-all duration-300 shadow-glow-purple hover:scale-105 active:scale-95 flex items-center justify-center gap-2 group"
+            >
+              <Heart className="w-4 h-4 fill-white" />
+              <span>Ver Minhas Músicas e Bandas Favoritas</span>
+            </button>
+          )}
 
           <button
             onClick={onExplore}
@@ -99,16 +131,16 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onOpenCreateBand, onEx
 
           <div className="p-3">
             <span className="block text-2xl sm:text-3xl font-extrabold text-[#8B5CF6] font-display">
-              10 Faixas
+              Cloudflare R2
             </span>
-            <span className="text-xs text-[#94A3B8]">Limite Justo por Álbum</span>
+            <span className="text-xs text-[#94A3B8]">Streaming Sem Perdas</span>
           </div>
 
           <div className="p-3">
             <span className="block text-2xl sm:text-3xl font-extrabold text-[#F8FAFC] font-display">
               Zero
             </span>
-            <span className="text-xs text-[#94A3B8]">Intermediários</span>
+            <span className="text-xs text-[#94A3B8]">Algoritmos Restritivos</span>
           </div>
         </motion.div>
       </div>

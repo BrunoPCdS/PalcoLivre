@@ -17,11 +17,11 @@ export class StorageService {
    * Mapeamento de tipos MIME permitidos por categoria
    */
   private static readonly ALLOWED_MIME_TYPES: Record<StorageCategory, string[]> = {
-    avatar: ['image/jpeg', 'image/png', 'image/webp'],
-    banner: ['image/jpeg', 'image/png', 'image/webp'],
-    gallery: ['image/jpeg', 'image/png', 'image/webp'],
-    'album-cover': ['image/jpeg', 'image/png', 'image/webp'],
-    'track-audio': ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav', 'audio/aac'],
+    avatar: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+    banner: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+    gallery: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+    'album-cover': ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+    'track-audio': ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav', 'audio/aac', 'audio/ogg', 'audio/webm', 'audio/mp4', 'audio/x-m4a'],
   };
 
   /**
@@ -100,11 +100,16 @@ export class StorageService {
       'image/jpeg': 'jpg',
       'image/png': 'png',
       'image/webp': 'webp',
+      'image/gif': 'gif',
       'audio/mpeg': 'mp3',
       'audio/mp3': 'mp3',
       'audio/wav': 'wav',
       'audio/x-wav': 'wav',
       'audio/aac': 'aac',
+      'audio/ogg': 'ogg',
+      'audio/webm': 'webm',
+      'audio/mp4': 'm4a',
+      'audio/x-m4a': 'm4a',
     };
     return map[mime.toLowerCase()] || 'bin';
   }

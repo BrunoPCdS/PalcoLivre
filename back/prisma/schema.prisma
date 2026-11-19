@@ -79,6 +79,9 @@ model Band {
   members        String       @db.Text // Descritivo dos integrantes e instrumentos
   contactPhone   String       // Criptografado simetricamente (AES-256-GCM)
   contactEmail   String
+  instagramUrl   String?
+  spotifyUrl     String?
+  youtubeUrl     String?
   profileImageUrl String?
   bannerImageUrl  String?
   viewCount      Int          @default(0)

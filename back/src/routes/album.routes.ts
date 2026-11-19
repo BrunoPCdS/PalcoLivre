@@ -11,6 +11,8 @@ router.get('/:id', optionalAuth, AlbumController.getById);
 
 // Rotas Protegidas (Gestores)
 router.post('/', requireAuth, validateBody(createAlbumSchema), AlbumController.create);
+router.put('/:id', requireAuth, AlbumController.updateAlbum);
+router.delete('/:id', requireAuth, AlbumController.deleteAlbum);
 router.post('/:id/tracks', requireAuth, validateBody(addTrackSchema), AlbumController.addTrack);
 router.delete('/tracks/:trackId', requireAuth, AlbumController.deleteTrack);
 

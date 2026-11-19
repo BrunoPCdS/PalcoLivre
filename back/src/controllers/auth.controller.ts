@@ -10,6 +10,7 @@ export class AuthController {
   static async register(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { name, email, password, role } = req.body;
+      const mappedRole = (role === 'BAND' || role === 'BAND_MANAGER') ? 'BAND_MANAGER' : 'LISTENER';
 
       // Verifica se o e-mail já existe
       const existingUser = await prisma.user.findUnique({ where: { email } });
@@ -25,7 +26,7 @@ export class AuthController {
           name,
           email,
           passwordHash,
-          role,
+          role: mappedRole,
           verificationToken,
         },
         select: {

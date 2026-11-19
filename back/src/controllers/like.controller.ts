@@ -122,4 +122,89 @@ export class LikeController {
       next(error);
     }
   }
+
+  /**
+   * Listar bandas favoritadas pelo usuário logado
+   */
+  static async getMyLikedBands(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) throw new AppError('Não autenticado', 401);
+      const likes = await prisma.bandLike.findMany({
+        where: { userId: req.user.userId },
+        include: {
+          band: {
+            include: {
+              _count: { select: { likes: true, albums: true } },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      const bands = likes.map((item) => ({
+        ...item.band,
+        contactPhone: undefined,
+        likeCount: item.band._count.likes,
+        albumCount: item.band._count.albums,
+        isLiked: true,
+      }));
+
+      res.status(200).json({
+        status: 'success',
+        data: { bands },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Listar faixas favoritadas pelo usuário logado
+   */
+  static async getMyLikedTracks(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) throw new AppError('Não autenticado', 401);
+      const likes = await prisma.trackLike.findMany({
+        where: { userId: req.user.userId },
+        include: {
+          track: {
+            include: {
+              album: {
+                include: {
+                  band: {
+                    select: { id: true, name: true, slug: true, profileImageUrl: true },
+                  },
+                },
+              },
+              _count: { select: { likes: true } },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      const tracks = likes.map((item) => ({
+        id: item.track.id,
+        albumId: item.track.albumId,
+        title: item.track.title,
+        trackNumber: item.track.trackNumber,
+        duration: item.track.duration,
+        audioUrl: item.track.audioUrl,
+        r2Key: item.track.r2Key,
+        playCount: item.track.playCount,
+        likesCount: item.track._count.likes,
+        isLiked: true,
+        bandName: item.track.album.band.name,
+        bandSlug: item.track.album.band.slug,
+        coverImageUrl: item.track.album.coverImageUrl,
+      }));
+
+      res.status(200).json({
+        status: 'success',
+        data: { tracks },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }

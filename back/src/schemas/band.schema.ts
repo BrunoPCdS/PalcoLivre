@@ -26,8 +26,11 @@ export const createBandSchema = z.object({
   members: z.string().min(3, 'Informe a lista de integrantes e instrumentos').max(1000),
   contactPhone: z.string().min(8, 'Telefone de contato inválido').max(25),
   contactEmail: z.string().email('E-mail de contato inválido').toLowerCase().trim(),
-  profileImageUrl: z.string().url('URL inválida').optional().nullable(),
-  bannerImageUrl: z.string().url('URL inválida').optional().nullable(),
+  instagramUrl: z.string().optional().nullable().or(z.literal('')),
+  spotifyUrl: z.string().optional().nullable().or(z.literal('')),
+  youtubeUrl: z.string().optional().nullable().or(z.literal('')),
+  profileImageUrl: z.string().optional().nullable().or(z.literal('')),
+  bannerImageUrl: z.string().optional().nullable().or(z.literal('')),
 });
 
 export const updateBandSchema = createBandSchema.partial();

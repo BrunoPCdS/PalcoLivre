@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../config/prisma';
 import { CryptoService } from '../services/crypto.service';
 import { MailService } from '../services/mail.service';
+import { StorageService } from '../services/storage.service';
 import { AppError } from '../middlewares/error.middleware';
 
 function generateSlug(text: string): string {
@@ -29,6 +30,9 @@ export class BandController {
         contactEmail,
         profileImageUrl,
         bannerImageUrl,
+        instagramUrl,
+        spotifyUrl,
+        youtubeUrl,
       } = req.body;
 
       // Gera slug único
@@ -44,7 +48,7 @@ export class BandController {
       // Criptografia simétrica AES-256-GCM do telefone de contato para segurança
       const encryptedPhone = CryptoService.encryptSensitive(contactPhone);
 
-      // Atualiza o role do usuário para BAND_MANAGER caso seja LISTENER
+      // Garante que o role do usuário seja BAND_MANAGER
       await prisma.user.update({
         where: { id: req.user.userId },
         data: { role: 'BAND_MANAGER' },
@@ -61,8 +65,11 @@ export class BandController {
           members,
           contactPhone: encryptedPhone,
           contactEmail,
-          profileImageUrl,
-          bannerImageUrl,
+          profileImageUrl: profileImageUrl || null,
+          bannerImageUrl: bannerImageUrl || null,
+          instagramUrl: instagramUrl || null,
+          spotifyUrl: spotifyUrl || null,
+          youtubeUrl: youtubeUrl || null,
         },
       });
 
@@ -170,9 +177,26 @@ export class BandController {
         updateData.contactPhone = CryptoService.encryptSensitive(updateData.contactPhone);
       }
 
+      // Evita sobreescrever id ou userId
+      delete updateData.id;
+      delete updateData.userId;
+      delete updateData.createdAt;
+      delete updateData.updatedAt;
+
       const updatedBand = await prisma.band.update({
         where: { id },
         data: updateData,
+        include: {
+          photos: { orderBy: { order: 'asc' } },
+          albums: {
+            orderBy: { releaseYear: 'desc' },
+            include: {
+              tracks: { orderBy: { trackNumber: 'asc' } },
+              _count: { select: { likes: true, tracks: true } },
+            },
+          },
+          _count: { select: { likes: true, albums: true } },
+        },
       });
 
       res.status(200).json({
@@ -182,8 +206,83 @@ export class BandController {
           band: {
             ...updatedBand,
             contactPhone: CryptoService.decryptSensitive(updatedBand.contactPhone),
+            likeCount: updatedBand._count.likes,
           },
         },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getUserBands(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) throw new AppError('Não autenticado', 401);
+      const bands = await prisma.band.findMany({
+        where: { userId: req.user.userId },
+        include: {
+          photos: { orderBy: { order: 'asc' } },
+          albums: {
+            orderBy: { releaseYear: 'desc' },
+            include: {
+              tracks: { orderBy: { trackNumber: 'asc' } },
+              _count: { select: { likes: true, tracks: true } },
+            },
+          },
+          _count: { select: { likes: true, albums: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      res.status(200).json({
+        status: 'success',
+        data: {
+          bands: bands.map((b) => ({
+            ...b,
+            contactPhone: CryptoService.decryptSensitive(b.contactPhone),
+            likeCount: b._count.likes,
+            albumCount: b._count.albums,
+          })),
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async delete(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) throw new AppError('Não autenticado', 401);
+      const { id } = req.params;
+
+      const band = await prisma.band.findUnique({
+        where: { id },
+        include: {
+          albums: {
+            include: { tracks: true },
+          },
+        },
+      });
+      if (!band) throw new AppError('Banda não encontrada.', 404);
+
+      if (band.userId !== req.user.userId && req.user.role !== 'ADMIN') {
+        throw new AppError('Você não tem permissão para excluir esta banda.', 403);
+      }
+
+      // Expurga arquivos de áudio associados no Cloudflare R2
+      for (const album of band.albums) {
+        for (const track of album.tracks) {
+          if (track.r2Key) {
+            StorageService.deleteFile(track.r2Key);
+          }
+        }
+      }
+
+      await prisma.band.delete({ where: { id } });
+
+      res.status(200).json({
+        status: 'success',
+        message: 'Banda e todos os seus recursos excluídos com sucesso.',
       });
     } catch (error) {
       next(error);

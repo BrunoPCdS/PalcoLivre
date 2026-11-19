@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, UploadCloud, Music, Shield, CheckCircle, Info } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { X, UploadCloud, Music, Shield, Instagram, Youtube, Radio, AlertCircle } from 'lucide-react';
 import { MusicGenre, Band } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { ApiService } from '../../services/api';
+import { ImageUploadField } from '../common/ImageUploadField';
 
 interface CreateBandModalProps {
   isOpen: boolean;
@@ -16,7 +17,7 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
   onClose,
   onBandCreated,
 }) => {
-  const { user, requireAuth } = useAuth();
+  const { user, isBand, requireAuth, openAuthModal } = useAuth();
 
   const [name, setName] = useState('');
   const [genre, setGenre] = useState<MusicGenre>('ROCK');
@@ -25,6 +26,9 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
   const [members, setMembers] = useState('');
   const [contactPhone, setContactPhone] = useState('');
   const [contactEmail, setContactEmail] = useState('');
+  const [instagramUrl, setInstagramUrl] = useState('');
+  const [spotifyUrl, setSpotifyUrl] = useState('');
+  const [youtubeUrl, setYoutubeUrl] = useState('');
   const [profileImageUrl, setProfileImageUrl] = useState('');
   const [bannerImageUrl, setBannerImageUrl] = useState('');
 
@@ -38,7 +42,12 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
     setErrorMsg('');
 
     if (!user) {
-      requireAuth(() => {}, 'Cadastre-se primeiro para criar e gerenciar sua banda no PalcoLivre.');
+      openAuthModal('register', 'Crie sua conta de Banda (BAND) para cadastrar e gerenciar perfis no PalcoLivre!');
+      return;
+    }
+
+    if (!isBand) {
+      setErrorMsg('Apenas perfis do tipo Conta de Banda (BAND) têm permissão para cadastrar bandas.');
       return;
     }
 
@@ -53,6 +62,9 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
         members,
         contactPhone,
         contactEmail,
+        instagramUrl: instagramUrl || undefined,
+        spotifyUrl: spotifyUrl || undefined,
+        youtubeUrl: youtubeUrl || undefined,
         profileImageUrl: profileImageUrl || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=600&q=80',
         bannerImageUrl: bannerImageUrl || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=1600&q=80',
       });
@@ -97,13 +109,25 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
           </button>
         </div>
 
+        {user && !isBand && (
+          <div className="m-6 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl text-xs text-yellow-300 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold">Conta de Ouvinte Detectada</p>
+              <p className="mt-0.5 text-yellow-200/80">
+                O seu perfil está configurado como Ouvinte (USER). Apenas contas do tipo Banda (BAND) podem cadastrar e gerenciar artistas na plataforma.
+              </p>
+            </div>
+          </div>
+        )}
+
         {errorMsg && (
           <div className="mx-6 mt-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-xs text-red-400">
             {errorMsg}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+        <form onSubmit={handleSubmit} className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
           {/* Nome e Gênero */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -194,7 +218,7 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-[#F8FAFC] mb-1 flex items-center gap-1">
-                <span>Telefone de Contato</span>
+                <span>Telefone de Contato *</span>
                 <span title="Protegido por criptografia simétrica AES-256">
                   <Shield className="w-3 h-3 text-[#FF5500]" />
                 </span>
@@ -224,39 +248,72 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
             </div>
           </div>
 
-          {/* URLs de Mídia (Integrado com Cloudflare R2) */}
-          <div className="space-y-3 pt-2">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-[#8B5CF6]">
+          {/* Redes Sociais */}
+          <div className="space-y-3 pt-1">
+            <label className="block text-xs font-semibold text-[#F8FAFC]">
+              Redes Sociais & Links Oficiais
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="relative">
+                <Instagram className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#94A3B8]" />
+                <input
+                  type="text"
+                  placeholder="Instagram (@ ou link)"
+                  value={instagramUrl}
+                  onChange={(e) => setInstagramUrl(e.target.value)}
+                  className="w-full bg-[#0F1014] text-xs text-[#F8FAFC] pl-8 pr-3 py-2 rounded-lg border border-[#272A36] focus:border-[#FF5500] focus:outline-none"
+                />
+              </div>
+
+              <div className="relative">
+                <Radio className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#94A3B8]" />
+                <input
+                  type="text"
+                  placeholder="Spotify URL"
+                  value={spotifyUrl}
+                  onChange={(e) => setSpotifyUrl(e.target.value)}
+                  className="w-full bg-[#0F1014] text-xs text-[#F8FAFC] pl-8 pr-3 py-2 rounded-lg border border-[#272A36] focus:border-[#FF5500] focus:outline-none"
+                />
+              </div>
+
+              <div className="relative">
+                <Youtube className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#94A3B8]" />
+                <input
+                  type="text"
+                  placeholder="YouTube URL"
+                  value={youtubeUrl}
+                  onChange={(e) => setYoutubeUrl(e.target.value)}
+                  className="w-full bg-[#0F1014] text-xs text-[#F8FAFC] pl-8 pr-3 py-2 rounded-lg border border-[#272A36] focus:border-[#FF5500] focus:outline-none"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Uploads de Imagens (Cloudflare R2) com Preview */}
+          <div className="space-y-4 pt-2 border-t border-[#272A36]">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-[#FF5500]">
               <UploadCloud className="w-4 h-4" />
-              <span>Armazenamento de Imagens (Cloudflare R2)</span>
+              <span>Fotos Oficiais da Banda (Upload Cloudflare R2)</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-[11px] text-[#94A3B8] mb-1">
-                  Foto de Perfil (Avatar / Logo)
-                </label>
-                <input
-                  type="url"
-                  placeholder="https://... (URL pública R2)"
-                  value={profileImageUrl}
-                  onChange={(e) => setProfileImageUrl(e.target.value)}
-                  className="w-full bg-[#0F1014] text-xs text-[#F8FAFC] px-3 py-2 rounded-lg border border-[#272A36] focus:border-[#8B5CF6] focus:outline-none"
-                />
-              </div>
+              <ImageUploadField
+                label="Foto de Perfil (Avatar / Logo)"
+                category="avatar"
+                currentUrl={profileImageUrl}
+                aspect="square"
+                helperText="Envie a foto do logo ou retrato da banda. Upload direto para o Cloudflare R2."
+                onUploadSuccess={(url) => setProfileImageUrl(url)}
+              />
 
-              <div>
-                <label className="block text-[11px] text-[#94A3B8] mb-1">
-                  Banner de Capa (Show / Palco)
-                </label>
-                <input
-                  type="url"
-                  placeholder="https://... (URL pública R2)"
-                  value={bannerImageUrl}
-                  onChange={(e) => setBannerImageUrl(e.target.value)}
-                  className="w-full bg-[#0F1014] text-xs text-[#F8FAFC] px-3 py-2 rounded-lg border border-[#272A36] focus:border-[#8B5CF6] focus:outline-none"
-                />
-              </div>
+              <ImageUploadField
+                label="Banner de Capa (Show / Palco)"
+                category="banner"
+                currentUrl={bannerImageUrl}
+                aspect="banner"
+                helperText="Banner horizontal em alta definição para o cabeçalho da banda."
+                onUploadSuccess={(url) => setBannerImageUrl(url)}
+              />
             </div>
           </div>
 
@@ -271,10 +328,10 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
 
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || (!!user && !isBand)}
               className="px-6 py-2.5 rounded-full bg-[#FF5500] hover:bg-[#E04B00] text-white text-xs font-bold shadow-glow-orange transition-all disabled:opacity-50"
             >
-              {isLoading ? 'Publicando...' : 'Publicar Perfil da Banda'}
+              {isLoading ? 'Publicando no Palco...' : 'Publicar Perfil da Banda'}
             </button>
           </div>
         </form>

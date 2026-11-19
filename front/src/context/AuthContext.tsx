@@ -1,10 +1,11 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User } from '../types';
+import { User, isBandRole } from '../types';
 import { ApiService } from '../services/api';
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
+  isBand: boolean;
   isLoading: boolean;
   isAuthModalOpen: boolean;
   authModalMode: 'login' | 'register';
@@ -89,6 +90,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       value={{
         user,
         isAuthenticated: !!user,
+        isBand: isBandRole(user?.role),
         isLoading,
         isAuthModalOpen,
         authModalMode,
