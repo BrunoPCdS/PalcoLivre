@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  color-scheme: dark;
+}
+
+h1, h2, h3, .font-display {
+  font-family: 'Unbounded', 'Plus Jakarta Sans', sans-serif;
+}
+
+body {
+  background-color: #0F1014;
+  color: #F8FAFC;
+  overflow-x: hidden;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0F1014;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #272A36;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #FF5500;
+}
+
+/* Stage Lighting Glows */
+.stage-glow-orange {
+  background: radial-gradient(circle at 50% 0%, rgba(255, 85, 0, 0.15) 0%, transparent 70%);
+}
+
+.stage-glow-purple {
+  background: radial-gradient(circle at 100% 50%, rgba(139, 92, 246, 0.12) 0%, transparent 60%);
+}
+
+.card-stage-hover {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.card-stage-hover:hover {
+  transform: translateY(-4px);
+  border-color: rgba(255, 85, 0, 0.5);
+  box-shadow: 0 10px 30px -10px rgba(255, 85, 0, 0.25);
+}
