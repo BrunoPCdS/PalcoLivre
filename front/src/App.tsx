@@ -23,6 +23,8 @@ function MainApp() {
   const [currentView, setCurrentView] = useState<'home' | 'featured' | 'explore' | 'band-profile' | 'user-profile' | 'band-dashboard'>('home');
   const [selectedBandSlug, setSelectedBandSlug] = useState<string | null>(null);
   const [isCreateBandModalOpen, setIsCreateBandModalOpen] = useState(false);
+  const [isLoadingDashboardBands, setIsLoadingDashboardBands] = useState(false);
+  const [dashboardLoadError, setDashboardLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     // Tenta carregar dados atualizados da API Neon/Express
@@ -37,9 +39,41 @@ function MainApp() {
       });
   }, []);
 
+  useEffect(() => {
+    if (currentView !== 'band-dashboard' || !user || !isBand) return;
+    let cancelled = false;
+    setIsLoadingDashboardBands(true);
+    setDashboardLoadError(null);
+    ApiService.getUserBands()
+      .then((ownedBands) => {
+        if (cancelled) return;
+        if (ownedBands.length === 0) {
+          setDashboardLoadError('Não encontramos uma banda vinculada a esta conta.');
+          return;
+        }
+        setBands((previous) => {
+          const otherBands = previous.filter((item) => !ownedBands.some((owned) => owned.id === item.id));
+          return [...ownedBands, ...otherBands];
+        });
+        setSelectedBandSlug(ownedBands[0].slug);
+      })
+      .catch((error) => {
+        if (!cancelled) setDashboardLoadError(error.message || 'Não foi possível carregar os dados da banda.');
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingDashboardBands(false);
+      });
+    return () => { cancelled = true; };
+  }, [currentView, user, isBand]);
+
   const handleSelectBand = (slug: string) => {
     setSelectedBandSlug(slug);
     setCurrentView('band-profile');
+    ApiService.getBandBySlug(slug)
+      .then((loadedBand) => {
+        setBands((previous) => [loadedBand, ...previous.filter((item) => item.id !== loadedBand.id)]);
+      })
+      .catch((error) => console.error('Não foi possível carregar o perfil completo da banda:', error));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -89,12 +123,18 @@ function MainApp() {
 
         {/* Visualização de Gestão da Banda (Apenas BAND / Dono) */}
         {currentView === 'band-dashboard' && (
-          <BandManagementView
-            band={selectedBand}
-            onBack={() => setCurrentView('home')}
-            onBandUpdated={handleBandUpdated}
-            onViewPublicProfile={(slug) => handleSelectBand(slug)}
-          />
+          isLoadingDashboardBands ? (
+            <div className="p-12 text-center text-[#94A3B8]">Carregando álbuns e músicas da banda...</div>
+          ) : dashboardLoadError ? (
+            <div className="p-12 text-center text-red-400">{dashboardLoadError}</div>
+          ) : selectedBand ? (
+            <BandManagementView
+              band={selectedBand}
+              onBack={() => setCurrentView('home')}
+              onBandUpdated={handleBandUpdated}
+              onViewPublicProfile={(slug) => handleSelectBand(slug)}
+            />
+          ) : null
         )}
 
         {/* Visualização do Perfil Público da Banda */}

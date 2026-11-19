@@ -24,5 +24,6 @@ router.post('/', requireAuth, requireRole(['BAND_MANAGER', 'ADMIN']), validateBo
 router.put('/:id', requireAuth, validateBody(updateBandSchema), BandController.update);
 router.delete('/:id', requireAuth, BandController.delete);
 router.post('/:id/photos', requireAuth, validateBody(addBandPhotoSchema), BandController.addPhoto);
+router.delete('/:id/photos/:photoId', requireAuth, BandController.deletePhoto);
 
 export default router;

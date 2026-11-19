@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { usePlayer } from '../../context/PlayerContext';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -12,6 +12,7 @@ import {
   Music,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ApiService } from '../../services/api';
 
 function formatTime(seconds: number): string {
   if (isNaN(seconds) || seconds < 0) return '0:00';
@@ -40,14 +41,23 @@ export const PersistentPlayer: React.FC<{ onOpenBandProfile?: (slug: string) => 
   const [isLiked, setIsLiked] = useState(false);
   const [prevVolume, setPrevVolume] = useState(volume);
 
+  useEffect(() => {
+    setIsLiked(currentTrack?.isLiked || false);
+  }, [currentTrack?.id, currentTrack?.isLiked]);
+
   if (!currentTrack) {
     // Player discreto em standby caso nenhuma faixa tenha sido selecionada ainda
     return null;
   }
 
   const handleLikeClick = () => {
-    requireAuth(() => {
-      setIsLiked(!isLiked);
+    requireAuth(async () => {
+      try {
+        const result = await ApiService.toggleTrackLike(currentTrack.id);
+        setIsLiked(result.isLiked);
+      } catch (error) {
+        console.error('Falha ao salvar curtida da faixa:', error);
+      }
     }, 'Crie uma conta no PalcoLivre para favoritar faixas e salvar em suas playlists!');
   };
 

@@ -106,9 +106,11 @@ export class BandController {
                 orderBy: { trackNumber: 'asc' },
                 include: {
                   _count: { select: { likes: true } },
+                  likes: { where: { userId: currentUserId || '__anonymous__' }, select: { id: true } },
                 },
               },
               _count: { select: { likes: true, tracks: true } },
+              likes: { where: { userId: currentUserId || '__anonymous__' }, select: { id: true } },
             },
           },
           _count: { select: { likes: true } },
@@ -149,6 +151,16 @@ export class BandController {
         data: {
           band: {
             ...band,
+            albums: band.albums.map((album) => ({
+              ...album,
+              likeCount: album._count.likes,
+              isLiked: album.likes.length > 0,
+              tracks: album.tracks.map((track) => ({
+                ...track,
+                likesCount: track._count.likes,
+                isLiked: track.likes.length > 0,
+              })),
+            })),
             contactPhone: decryptedPhone,
             likeCount: band._count.likes,
             isLiked: isLikedByCurrentUser,
@@ -369,6 +381,24 @@ export class BandController {
         message: 'Foto adicionada à galeria.',
         data: { photo },
       });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async deletePhoto(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) throw new AppError('Não autenticado', 401);
+      const { id, photoId } = req.params;
+      const band = await prisma.band.findUnique({ where: { id }, select: { userId: true } });
+      if (!band) throw new AppError('Banda não encontrada.', 404);
+      if (band.userId !== req.user.userId && req.user.role !== 'ADMIN') {
+        throw new AppError('Sem autorização para remover fotos desta banda.', 403);
+      }
+      const photo = await prisma.bandPhoto.findFirst({ where: { id: photoId, bandId: id } });
+      if (!photo) throw new AppError('Foto não encontrada.', 404);
+      await prisma.bandPhoto.delete({ where: { id: photoId } });
+      res.status(200).json({ status: 'success', message: 'Foto removida da galeria.' });
     } catch (error) {
       next(error);
     }

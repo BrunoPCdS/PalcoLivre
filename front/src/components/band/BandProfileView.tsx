@@ -39,6 +39,9 @@ export const BandProfileView: React.FC<BandProfileViewProps> = ({ band, onBack, 
 
   // Curtidas individuais de faixas
   const [likedTrackIds, setLikedTrackIds] = useState<Record<string, boolean>>({});
+  const [trackLikeCounts, setTrackLikeCounts] = useState<Record<string, number>>({});
+  const [likedAlbumIds, setLikedAlbumIds] = useState<Record<string, boolean>>({});
+  const [albumLikeCounts, setAlbumLikeCounts] = useState<Record<string, number>>({});
 
   // Form de contato da banda
   const [senderName, setSenderName] = useState('');
@@ -55,10 +58,8 @@ export const BandProfileView: React.FC<BandProfileViewProps> = ({ band, onBack, 
         const res = await ApiService.toggleBandLike(band.id);
         setIsLiked(res.isLiked);
         setLikeCount(res.likeCount);
-      } catch {
-        const nextLiked = !isLiked;
-        setIsLiked(nextLiked);
-        setLikeCount((prev) => prev + (nextLiked ? 1 : -1));
+      } catch (error) {
+        console.error('Falha ao salvar curtida da banda:', error);
       }
     }, 'Crie uma conta para curtir o perfil da banda e salvar em seus favoritos!');
   };
@@ -69,10 +70,24 @@ export const BandProfileView: React.FC<BandProfileViewProps> = ({ band, onBack, 
       try {
         const res = await ApiService.toggleTrackLike(track.id);
         setLikedTrackIds((prev) => ({ ...prev, [track.id]: res.isLiked }));
-      } catch {
-        setLikedTrackIds((prev) => ({ ...prev, [track.id]: !prev[track.id] }));
+        setTrackLikeCounts((prev) => ({ ...prev, [track.id]: res.likeCount }));
+      } catch (error) {
+        console.error('Falha ao salvar curtida da faixa:', error);
       }
     }, 'Crie uma conta para favoritar músicas e ouvi-las na sua playlist de favoritas!');
+  };
+
+  const handleToggleAlbumLike = (e: React.MouseEvent, album: Album) => {
+    e.stopPropagation();
+    requireAuth(async () => {
+      try {
+        const res = await ApiService.toggleAlbumLike(album.id);
+        setLikedAlbumIds((prev) => ({ ...prev, [album.id]: res.isLiked }));
+        setAlbumLikeCounts((prev) => ({ ...prev, [album.id]: res.likeCount }));
+      } catch (error) {
+        console.error('Falha ao salvar curtida do álbum:', error);
+      }
+    }, 'Entre na sua conta para curtir álbuns!');
   };
 
   const handleSendMessage = (e: React.FormEvent) => {
@@ -209,6 +224,10 @@ export const BandProfileView: React.FC<BandProfileViewProps> = ({ band, onBack, 
                         <p className="text-xs text-[#94A3B8]">
                           {album.releaseYear} &bull; {album.tracks?.length || 0} faixas ({album.genre})
                         </p>
+                        <button type="button" onClick={(e) => handleToggleAlbumLike(e, album)} className={`mt-2 inline-flex items-center gap-2 text-xs ${likedAlbumIds[album.id] ?? album.isLiked ? 'text-[#FF5500]' : 'text-[#94A3B8]'}`} title="Curtir álbum">
+                          <Heart className={`w-4 h-4 ${likedAlbumIds[album.id] ?? album.isLiked ? 'fill-current' : ''}`} />
+                          {albumLikeCounts[album.id] ?? album.likeCount ?? 0} curtidas
+                        </button>
                       </div>
                     </div>
 
@@ -258,6 +277,7 @@ export const BandProfileView: React.FC<BandProfileViewProps> = ({ band, onBack, 
                                 <span className="text-[10px] text-[#94A3B8]">
                                   {track.playCount} reproduções
                                 </span>
+                                <span className="text-[10px] text-[#94A3B8]">{trackLikeCounts[track.id] ?? track.likesCount ?? 0} curtidas</span>
                               </div>
                             </div>
 

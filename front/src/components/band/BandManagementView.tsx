@@ -72,6 +72,9 @@ export const BandManagementView: React.FC<BandManagementViewProps> = ({
   const [newAlbumGenre, setNewAlbumGenre] = useState<MusicGenre>(initialBand.genre);
   const [newAlbumCoverUrl, setNewAlbumCoverUrl] = useState('');
   const [isSavingAlbum, setIsSavingAlbum] = useState(false);
+  const [editingAlbumId, setEditingAlbumId] = useState<string | null>(null);
+  const [editAlbumTitle, setEditAlbumTitle] = useState('');
+  const [editAlbumCoverUrl, setEditAlbumCoverUrl] = useState('');
 
   // Track addition inline state
   const [selectedAlbumIdForTrack, setSelectedAlbumIdForTrack] = useState<string | null>(null);
@@ -144,6 +147,10 @@ export const BandManagementView: React.FC<BandManagementViewProps> = ({
   const handleCreateAlbum = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newAlbumTitle.trim()) return;
+    if (!newAlbumCoverUrl) {
+      alert('Envie a imagem da capa do álbum antes de publicar.');
+      return;
+    }
 
     setIsSavingAlbum(true);
     try {
@@ -152,7 +159,7 @@ export const BandManagementView: React.FC<BandManagementViewProps> = ({
         title: newAlbumTitle,
         releaseYear: Number(newAlbumYear),
         genre: newAlbumGenre,
-        coverImageUrl: newAlbumCoverUrl || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=600&q=80',
+        coverImageUrl: newAlbumCoverUrl,
       });
 
       await refreshBandData();
@@ -174,6 +181,19 @@ export const BandManagementView: React.FC<BandManagementViewProps> = ({
       await refreshBandData();
     } catch (err: any) {
       alert(err.message || 'Erro ao excluir álbum.');
+    }
+  };
+
+  const handleUpdateAlbum = async (album: Album) => {
+    try {
+      await ApiService.updateAlbum(album.id, {
+        title: editAlbumTitle.trim(),
+        coverImageUrl: editAlbumCoverUrl,
+      });
+      setEditingAlbumId(null);
+      await refreshBandData();
+    } catch (err: any) {
+      alert(err.message || 'Erro ao atualizar o álbum.');
     }
   };
 
@@ -422,7 +442,7 @@ export const BandManagementView: React.FC<BandManagementViewProps> = ({
                   <div>
                     <label className="block text-xs font-semibold text-[#F8FAFC] mb-1 flex items-center gap-1">
                       <span>Telefone de Contato</span>
-                      <Shield className="w-3 h-3 text-[#FF5500]" title="Criptografado AES-256" />
+                      <span title="Criptografado AES-256"><Shield className="w-3 h-3 text-[#FF5500]" /></span>
                     </label>
                     <input
                       type="text"
@@ -523,6 +543,52 @@ export const BandManagementView: React.FC<BandManagementViewProps> = ({
                   helperText="Banner horizontal panorâmico para o topo do perfil."
                   onUploadSuccess={(url) => setBannerImageUrl(url)}
                 />
+
+                <div className="border-t border-[#272A36] pt-5 space-y-4">
+                  <div>
+                    <h4 className="text-xs font-bold text-[#F8FAFC]">Galeria de Fotos do Palco</h4>
+                    <p className="text-[11px] text-[#94A3B8] mt-1">Envie várias fotos; cada envio é salvo na galeria pública da banda.</p>
+                  </div>
+                  <ImageUploadField
+                    label="Adicionar foto à galeria"
+                    category="gallery"
+                    aspect="square"
+                    entityId={band.id}
+                    helperText="Cada imagem enviada será adicionada à galeria."
+                    onUploadSuccess={async (url) => {
+                      try {
+                        await ApiService.addBandPhoto(band.id, url);
+                        await refreshBandData();
+                      } catch (err: any) {
+                        setDetailsFeedback({ type: 'error', msg: err.message || 'Não foi possível salvar a foto na galeria.' });
+                      }
+                    }}
+                  />
+                  {!!band.photos?.length && (
+                    <div className="grid grid-cols-3 gap-2">
+                      {band.photos.map((photo) => (
+                        <div key={photo.id} className="relative group aspect-square rounded-lg overflow-hidden border border-[#272A36]">
+                          <img src={photo.imageUrl} alt={photo.caption || 'Foto da banda'} className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                await ApiService.deleteBandPhoto(band.id, photo.id);
+                                await refreshBandData();
+                              } catch (err: any) {
+                                setDetailsFeedback({ type: 'error', msg: err.message || 'Não foi possível remover a foto.' });
+                              }
+                            }}
+                            className="absolute top-1 right-1 p-1.5 rounded-md bg-black/75 text-white hover:text-red-400"
+                            title="Remover foto da galeria"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
 
                 <div className="p-3 bg-[#0F1014] rounded-xl border border-[#272A36] text-[11px] text-[#94A3B8] space-y-1">
                   <span className="font-bold text-[#F8FAFC] block">Dica de Produtor:</span>
@@ -702,6 +768,18 @@ export const BandManagementView: React.FC<BandManagementViewProps> = ({
 
                       <div className="flex items-center gap-3">
                         <button
+                          type="button"
+                          onClick={() => {
+                            setEditingAlbumId(editingAlbumId === album.id ? null : album.id);
+                            setEditAlbumTitle(album.title);
+                            setEditAlbumCoverUrl(album.coverImageUrl);
+                          }}
+                          className="p-2 text-[#94A3B8] hover:text-[#FF5500] rounded-lg"
+                          title="Editar álbum e capa"
+                        >
+                          <Settings className="w-4 h-4" />
+                        </button>
+                        <button
                           onClick={() => {
                             if (selectedAlbumIdForTrack === album.id) {
                               setSelectedAlbumIdForTrack(null);
@@ -731,6 +809,20 @@ export const BandManagementView: React.FC<BandManagementViewProps> = ({
                     </div>
 
                     {/* Formulário Inline para Upload de Nova Faixa MP3 */}
+                    {editingAlbumId === album.id && (
+                      <div className="bg-[#0F1014] border border-[#8B5CF6]/30 rounded-xl p-4 space-y-4">
+                        <label className="block text-xs font-semibold text-[#F8FAFC] space-y-1">
+                          Nome do álbum
+                          <input value={editAlbumTitle} onChange={(e) => setEditAlbumTitle(e.target.value)} className="w-full bg-[#1A1C23] px-3 py-2 rounded-lg border border-[#272A36]" />
+                        </label>
+                        <ImageUploadField label="Alterar capa do álbum" category="album-cover" currentUrl={editAlbumCoverUrl} entityId={album.id} aspect="square" onUploadSuccess={setEditAlbumCoverUrl} />
+                        <div className="flex justify-end gap-2">
+                          <button type="button" onClick={() => setEditingAlbumId(null)} className="px-3 py-2 text-xs text-[#94A3B8]">Cancelar</button>
+                          <button type="button" onClick={() => handleUpdateAlbum(album)} disabled={!editAlbumTitle.trim() || !editAlbumCoverUrl} className="px-4 py-2 text-xs font-bold rounded-full bg-[#FF5500] disabled:opacity-50">Salvar alterações</button>
+                        </div>
+                      </div>
+                    )}
+
                     <AnimatePresence>
                       {selectedAlbumIdForTrack === album.id && (
                         <motion.div

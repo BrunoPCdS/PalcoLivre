@@ -1,5 +1,5 @@
 import { INITIAL_BANDS } from '../data/mockData';
-import { Band, Album, Track, User } from '../types';
+import { Band, Album, Track, User, BandPhoto } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3333/api';
 
@@ -82,14 +82,8 @@ export class ApiService {
 
   // --- Bands ---
   static async getBandBySlug(slug: string): Promise<Band> {
-    try {
-      const res = await this.request<{ data: { band: Band } }>(`/bands/${slug}`);
-      return res.data.band;
-    } catch {
-      const found = INITIAL_BANDS.find((b) => b.slug === slug);
-      if (found) return found;
-      return INITIAL_BANDS[0];
-    }
+    const res = await this.request<{ data: { band: Band } }>(`/bands/${slug}`);
+    return res.data.band;
   }
 
   static async createBand(payload: Partial<Band>): Promise<Band> {
@@ -129,6 +123,23 @@ export class ApiService {
     return this.request<{ data: { isLiked: boolean; likeCount: number } }>(`/likes/band/${bandId}`, {
       method: 'POST',
     }).then((res) => res.data);
+  }
+
+  static async toggleAlbumLike(albumId: string): Promise<{ isLiked: boolean; likeCount: number }> {
+    return this.request<{ data: { isLiked: boolean; likeCount: number } }>(`/likes/album/${albumId}`, {
+      method: 'POST',
+    }).then((res) => res.data);
+  }
+
+  static async addBandPhoto(bandId: string, imageUrl: string) {
+    return this.request<{ data: { photo: BandPhoto } }>(`/bands/${bandId}/photos`, {
+      method: 'POST',
+      body: JSON.stringify({ imageUrl }),
+    }).then((res) => res.data.photo);
+  }
+
+  static async deleteBandPhoto(bandId: string, photoId: string): Promise<void> {
+    await this.request(`/bands/${bandId}/photos/${photoId}`, { method: 'DELETE' });
   }
 
   // --- Cloudflare R2 Presigned Upload URL & File Upload ---

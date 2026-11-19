@@ -3,7 +3,7 @@ import { genreEnum } from './band.schema';
 
 export const trackItemSchema = z.object({
   title: z.string().min(1, 'O título da música é obrigatório').max(150),
-  trackNumber: z.number().int().min(1).max(10, 'O número da faixa deve ser entre 1 e 10'),
+  trackNumber: z.number().int().min(1).max(10, 'O número da faixa deve ser entre 1 e 10').optional(),
   duration: z.number().int().min(1, 'A duração deve ser informada em segundos'),
   audioUrl: z.string().url('URL de áudio inválida'),
   r2Key: z.string().min(1, 'Chave do R2 é obrigatória'),
