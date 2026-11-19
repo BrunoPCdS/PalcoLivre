@@ -28,16 +28,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [authPromptReason, setAuthPromptReason] = useState<string | undefined>();
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('@palcolivre:user');
     const savedToken = localStorage.getItem('@palcolivre:token');
-    if (savedUser && savedToken) {
-      try {
-        setUser(JSON.parse(savedUser));
-      } catch {
-        localStorage.removeItem('@palcolivre:user');
-      }
+    if (!savedToken || savedToken === 'mock-jwt-token') {
+      localStorage.removeItem('@palcolivre:user');
+      localStorage.removeItem('@palcolivre:token');
+      setIsLoading(false);
+      return;
     }
-    setIsLoading(false);
+
+    ApiService.getCurrentUser()
+      .then(({ data }) => {
+        setUser(data.user);
+        localStorage.setItem('@palcolivre:user', JSON.stringify(data.user));
+      })
+      .catch(() => {
+        setUser(null);
+        localStorage.removeItem('@palcolivre:user');
+        localStorage.removeItem('@palcolivre:token');
+      })
+      .finally(() => setIsLoading(false));
   }, []);
 
   const login = async (email: string, pass: string) => {

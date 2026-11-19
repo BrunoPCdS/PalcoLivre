@@ -38,38 +38,21 @@ export class ApiService {
 
   // --- Auth ---
   static async register(payload: { name: string; email: string; password: string; role: string }) {
-    try {
-      return await this.request<{ data: { user: User; token: string } }>('/auth/register', {
+    return this.request<{ data: { user: User; token: string } }>('/auth/register', {
         method: 'POST',
         body: JSON.stringify(payload),
       });
-    } catch {
-      // Fallback Demo Mock
-      const mockUser: User = {
-        id: 'usr-' + Date.now(),
-        name: payload.name,
-        email: payload.email,
-        role: payload.role as any,
-      };
-      return { data: { user: mockUser, token: 'mock-jwt-token' } };
-    }
   }
 
   static async login(payload: { email: string; password: string }) {
-    try {
-      return await this.request<{ data: { user: User; token: string } }>('/auth/login', {
+    return this.request<{ data: { user: User; token: string } }>('/auth/login', {
         method: 'POST',
         body: JSON.stringify(payload),
       });
-    } catch {
-      const mockUser: User = {
-        id: 'usr-1',
-        name: 'Ouvinte PalcoLivre',
-        email: payload.email,
-        role: 'LISTENER',
-      };
-      return { data: { user: mockUser, token: 'mock-jwt-token' } };
-    }
+  }
+
+  static async getCurrentUser() {
+    return this.request<{ data: { user: User } }>('/auth/me');
   }
 
   // --- Explore ---
@@ -161,16 +144,19 @@ export class ApiService {
     category: 'avatar' | 'banner' | 'gallery' | 'album-cover' | 'track-audio',
     entityId: string = 'general'
   ): Promise<{ publicUrl: string; fileKey: string }> {
+    const contentType = file.type && file.type !== 'application/octet-stream'
+      ? file.type
+      : (category === 'track-audio' && file.name.toLowerCase().endsWith('.mp3') ? 'audio/mpeg' : file.type || 'image/jpeg');
     try {
       const presigned = await this.getPresignedUrl(
         category,
-        file.type || (category === 'track-audio' ? 'audio/mpeg' : 'image/jpeg'),
+        contentType,
         file.size,
         entityId
       );
 
       const uploadHeaders: Record<string, string> = {
-        'Content-Type': file.type || (category === 'track-audio' ? 'audio/mpeg' : 'image/jpeg'),
+        'Content-Type': contentType,
       };
 
       const res = await fetch(presigned.uploadUrl, {
@@ -187,24 +173,16 @@ export class ApiService {
         publicUrl: presigned.publicUrl,
         fileKey: presigned.fileKey,
       };
-    } catch (error: any) {
-      console.warn('Upload via R2 presigned URL falhou ou bloqueado por CORS direto, gerando fallback de URL:', error);
-      const localUrl = URL.createObjectURL(file);
-      return {
-        publicUrl: localUrl,
-        fileKey: `${category}/${entityId}/${file.name}`,
-      };
+    } catch (error) {
+      console.error('Falha no upload para o Cloudflare R2:', error);
+      throw error;
     }
   }
 
   // --- Band Management (BAND / BAND_MANAGER) ---
   static async getUserBands(): Promise<Band[]> {
-    try {
-      const res = await this.request<{ data: { bands: Band[] } }>('/bands/user/my-bands');
-      return res.data.bands;
-    } catch {
-      return INITIAL_BANDS.slice(0, 1);
-    }
+    const res = await this.request<{ data: { bands: Band[] } }>('/bands/user/my-bands');
+    return res.data.bands;
   }
 
   static async updateBand(bandId: string, payload: Partial<Band>): Promise<Band> {
