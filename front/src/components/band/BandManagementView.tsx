@@ -189,6 +189,7 @@ export const BandManagementView: React.FC<BandManagementViewProps> = ({
     try {
       await ApiService.addTrack(albumId, {
         title: newTrackTitle.trim(),
+        trackNumber: (band.albums?.find((album) => album.id === albumId)?.tracks?.length || 0) + 1,
         duration: newTrackDuration,
         audioUrl: newTrackAudioUrl,
         r2Key: newTrackR2Key,
@@ -422,7 +423,10 @@ export const BandManagementView: React.FC<BandManagementViewProps> = ({
                   <div>
                     <label className="block text-xs font-semibold text-[#F8FAFC] mb-1 flex items-center gap-1">
                       <span>Telefone de Contato</span>
-                      <Shield className="w-3 h-3 text-[#FF5500]" title="Criptografado AES-256" />
+                      <Shield
+                        className="w-3 h-3 text-[#FF5500]"
+                        aria-label="Criptografado AES-256"
+                      />
                     </label>
                     <input
                       type="text"

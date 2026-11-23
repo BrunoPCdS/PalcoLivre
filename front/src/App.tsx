@@ -37,7 +37,19 @@ function MainApp() {
       });
   }, []);
 
-  const handleSelectBand = (slug: string) => {
+  const handleSelectBand = async (slug: string) => {
+    try {
+      const fullBand = await ApiService.getBandBySlug(slug);
+      setBands((prev) => {
+        const exists = prev.some((band) => band.slug === slug);
+        return exists
+          ? prev.map((band) => (band.slug === slug ? fullBand : band))
+          : [fullBand, ...prev];
+      });
+    } catch (error) {
+      console.warn('Erro ao carregar perfil completo da banda:', error);
+    }
+
     setSelectedBandSlug(slug);
     setCurrentView('band-profile');
     window.scrollTo({ top: 0, behavior: 'smooth' });
